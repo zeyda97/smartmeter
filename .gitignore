@@ -1,0 +1,68 @@
+*.class
+*.log
+
+# sbt specific
+.cache
+.history
+.cache-tests
+.lib/
+dist/*
+target/
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+# Wercker
+_builds/
+_projects/
+_steps/
+
+# Eclipse
+.cache-main
+.classpath
+.project
+.settings
+
+# GO
+dockerfile-cassandra-inject/go/bin/app
+
+# Cassandra
+dockerfile-cassandra/metastore_db/
+metastore_db/
+
+~$smartmert_data.xlsx
+
+# Python
+__pycache__/
+
+# dockerfile-cassandra/Dockerfile
+
+# Spark
+spark/storage/
+docker-compose-merge.yml
+
+# MacOS
+.DS_Store
+
+concourse/credentials.yml
+
+# Generated Files
+*.tmp
+dockerfile-app_streaming/Dockerfile
+dockerfile-app_streaming/pom.xml
+dockerfile-app_inject/pom.xml
+dockerfile-app_streaming/_docker_build.sh
+dockerfile-app_compose/_docker_build.sh
+dockerfile-app_compose/Dockerfile
+dockerfile-app_cassandra/Dockerfile
+dockerfile-app_cassandra/_docker_build.sh
+dockerfile-app_telegraf/Dockerfile
+dockerfile-app_telegraf/_docker_build.sh
+dockerfile-app_prometheus/_docker_build.sh
+dockerfile-app_prometheus/Dockerfile
+dockerfile-app_compose/properties/configuration-application.properties

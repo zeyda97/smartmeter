@@ -1,0 +1,99 @@
+docker run -it --network smartmeter gettyimages/spark:2.0.2-hadoop-2.7 sh
+
+echo "spark.cassandra.connection.host=cassandra_main" >> ./conf/spark-defaults.conf
+spark-shell --packages com.datastax.spark:spark-cassandra-connector_2.11:2.0.0
+
+:paste
+import com.datastax.spark.connector._
+val max_voltage = sc.cassandraTable("smartmeter", "max_voltage")
+//max_voltage.count
+
+val table = max_voltage.joinWithCassandraTable("smartmeter", "temperature")
+
+// http://stackoverflow.com/questions/37513667/how-to-create-a-spark-dataset-from-an-rdd
+// https://github.com/apache/spark/blob/master/examples/src/main/scala/org/apache/spark/examples/ml/MultilayerPerceptronClassifierExample.scala
+val layers = Array[Int](4, 12, 12, 2)
+
+import org.apache.spark.ml.classification.MultilayerPerceptronClassifier
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
+val trainer = new MultilayerPerceptronClassifier().setLayers(layers).setBlockSize(128).setSeed(1234L).setMaxIter(100)
+
+// http://stackoverflow.com/questions/33844591/prepare-data-for-multilayerperceptronclassifier-in-scala
+/*
+scala> raw.first
+res6: (com.datastax.spark.connector.CassandraRow, com.datastax.spark.connector.CassandraRow) =
+  (CassandraRow{epoch: 1490939785, voltage: 115.28834},CassandraRow{epoch: 1490939785, temperature: 21.1})
+*/
+
+import java.time.{LocalDateTime, ZoneOffset}
+import scala.math._
+implicit def bool2int(b:Boolean) = if (b) 1 else 0
+//val data = table.map({r => ((r.get[Float]("voltage_max").toInt > 117):Int, r.get[Int]("hour"))}).toDF("label", "hour")
+val flatten = table.map({case (v,t) =>
+  val date = LocalDateTime.ofEpochSecond(v.get[Long]("epoch"), 0, ZoneOffset.MIN)
+  val voltage = v.get[Float]("voltage")
+  val label = (voltage > 117):Int
+  val temperature = t.get[Float]("temperature")
+  // https://www.reddit.com/r/MachineLearning/comments/2hzuj5/how_do_i_encode_day_of_the_week_as_a_predictor/
+  val hour = date.getHour
+  val hourAngle = (hour.toFloat / 24) * 2 * Pi
+  val hourSin = 50 * sin(hourAngle)
+  val hourCos = 50 * cos(hourAngle)
+  val dayOfWeek = (date.getDayOfWeek.ordinal / 4) * 50 // Mon to Friday -> 0, Sat & Sun -> 50
+  (label, voltage, hour, hourSin, hourCos, dayOfWeek, temperature)})
+
+val data = flatten.toDF("label", "voltage", "hour", "hourSin", "hourCos", "dayOfWeek", "temperature")
+
+import org.apache.spark.ml.feature.VectorAssembler
+
+val assembler = new VectorAssembler()
+  .setInputCols(Array("hourSin", "hourCos", "dayOfWeek", "temperature"))
+  .setOutputCol("features")
+
+val all = assembler.transform(data)
+all.show
+
+val splits = all.randomSplit(Array(0.6, 0.4), seed = 1234L)
+val train = splits(0)
+val test = splits(1)
+
+val model = trainer.fit(train)
+
+val result = model.transform(test)
+
+result.show
+
+val predictionAndLabels = result.select("prediction", "label")
+val evaluator = new MulticlassClassificationEvaluator().setMetricName("accuracy")
+
+println("Test set accuracy = " + evaluator.evaluate(predictionAndLabels))
+
+
+
++-----+----------+----+--------------------+--------------------+---------+-----------+--------------------+----------+
+|label|   voltage|hour|             hourSin|             hourCos|dayOfWeek|temperature|            features|prediction|
++-----+----------+----+--------------------+--------------------+---------+-----------+--------------------+----------+
+|    0| 115.36195|  13| -12.940958284226115| -48.296289698960514|        0| -1.1098776|[-12.940958284226...|       0.0|
+|    0|115.378006|  14| -24.999994594456457|   -43.3012733101135|        0|  16.545746|[-24.999994594456...|       0.0|
+|    0|  116.9641|   3|   35.35533905932737|   35.35533905932738|        0|   4.004334|[35.3553390593273...|       0.0|
+|    1| 118.92017|  23|  -12.94095828422611|  48.296289698960514|       50|  21.167358|[-12.940958284226...|       0.0|
+|    1| 119.15324|  12|6.123233995736766...|               -50.0|       50| -12.110409|[6.12323399573676...|       1.0|
+|    0|  115.1506|  14| -24.999994594456457|   -43.3012733101135|        0|  10.854811|[-24.999994594456...|       0.0|
+|    0|115.264404|  14| -24.999994594456457|   -43.3012733101135|        0|  17.071587|[-24.999994594456...|       0.0|
+|    0|116.051216|  12|6.123233995736766...|               -50.0|        0|   17.97229|[6.12323399573676...|       0.0|
+|    0| 116.09436|  18|               -50.0|-9.18485099360514...|        0|   8.805743|[-50.0,-9.1848509...|       0.0|
+|    1| 117.17458|   2|  25.000000675692913|   43.30126979911044|        0|  2.6871693|[25.0000006756929...|       1.0|
+|    1| 117.76936|   5|   48.29629091058026|  12.940953762401076|        0|  7.3154197|[48.2962909105802...|       1.0|
+|    1| 117.93134|   9|   35.35533905932738|  -35.35533905932737|       50|   20.65408|[35.3553390593273...|       1.0|
+|    1| 117.98319|   3|   35.35533905932737|   35.35533905932738|        0|  -8.441887|[35.3553390593273...|       1.0|
+|    1| 118.16123|   3|   35.35533905932737|   35.35533905932738|        0|  19.932636|[35.3553390593273...|       1.0|
+|    1|118.276344|   2|  25.000000675692913|   43.30126979911044|       50|  22.284737|[25.0000006756929...|       1.0|
+|    1|117.115265|  19|  -48.29628969896052|   12.94095828422609|        0|  10.909927|[-48.296289698960...|       1.0|
+|    1| 117.36004|   9|   35.35533905932738|  -35.35533905932737|       50|  -12.67373|[35.3553390593273...|       1.0|
+|    1| 117.69681|  19|  -48.29628969896052|   12.94095828422609|       50|  17.909231|[-48.296289698960...|       0.0|
+|    1|117.809166|  21| -35.355339059327385|   35.35533905932737|        0|   7.070238|[-35.355339059327...|       1.0|
+|    0| 115.50017|  16|  -43.30127331011349|  -24.99999459445649|        0|  18.125008|[-43.301273310113...|       0.0|
++-----+----------+----+--------------------+--------------------+---------+-----------+--------------------+----------+
+only showing top 20 rows
+
+Test set accuracy = 0.9642857142857143
