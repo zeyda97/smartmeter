@@ -76,6 +76,12 @@ L'objectif principal de ce projet est de moderniser l'application **Smart-Meter*
 
 ## Spécifications Techniques
 
+![Architecture Smart-Meter](images/comparaison_1.png)
+
+---
+
+![Architecture Smart-Meter](images/comparaison_2.png)
+
 ### Langages
 - **Scala** : Utilisé pour les simulations de tests de charge via Gatling et pour les scripts de traitement des données dans Apache Spark.
   - **Alternative** : Java ou PySpark pour simplifier la maintenance.
@@ -120,7 +126,7 @@ L'objectif principal de ce projet est de moderniser l'application **Smart-Meter*
   - **Surveillance des Performances** : Prometheus et Grafana pour surveiller l'état des composants.
   - **Stockage des Données** : ScyllaDB ou Cassandra 4.x pour le stockage distribué.
 
-![Architecture Smart-Meter](images/smartmeter-architecture.png)
+![Architecture Smart-Meter](images/architecture.png)
 
 ### Architecture détaillée avec visuels
 - Schéma de flux de données entre Kafka/Kinesis et le backend.
@@ -141,6 +147,8 @@ L'objectif principal de ce projet est de moderniser l'application **Smart-Meter*
 ---
 
 ## Présentation des Outils
+
+![Outils et technologies](images/description_technologies.png)
 
 ### Outils choisis pour le projet
 - **Docker** : Conteneurisation des microservices.
