@@ -9,9 +9,9 @@
 **Enseignant :** Laurent Yves Magnin  
 **Courriel :** [magnin.laurent_yves@uqam.ca](mailto:magnin.laurent_yves@uqam.ca)  
 
-**Organisation GitHub :** [uqam-lomagnin](https://github.com/uqam-lomagnin)  
-**Nom de l'équipe :** [r00tAI](https://github.com/orgs/uqam-lomagnin/teams/r00tai)  
-**GitHub de notre projet :** [smartmeter-r00tai](https://github.com/uqam-lomagnin/smartmeter-r00tai)  
+**Organisation GitHub :** [![uqam-lomagnin][![uqam-lomagnin](https://img.shields.io/badge/GitHub-Org-blue)]](https://github.com/uqam-lomagnin)  
+**Nom de l'équipe :** [![r00tAI][![uqam-lomagnin](https://img.shields.io/badge/GitHub-Org-blue)]](https://github.com/orgs/uqam-lomagnin/teams/r00tai)  
+**GitHub de notre projet :** [![smartmeter-r00tai][![uqam-lomagnin](https://img.shields.io/badge/GitHub-Org-blue)]](https://github.com/uqam-lomagnin/smartmeter-r00tai)  
 
 ---
 
@@ -47,7 +47,6 @@ L'objectif principal de ce projet est de moderniser l'application **Smart-Meter*
 ### Introduction
 **Durée** : 15 minutes (estimatif)  
 **Objectif** : Présenter les objectifs, exigences, plan de développement, et les choix techniques pour la mise à niveau de l’application Smart-Meter.  
-**Équipe** : Tous les quatre membres au pupitre, chacun couvrant une section clé (ex. : Architecture, Exigences, Outils).
 
 ---
 
