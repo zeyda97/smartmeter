@@ -3,6 +3,7 @@
 .venv
 
 # sbt specific
+.idea
 .cache
 .history
 .cache-tests
