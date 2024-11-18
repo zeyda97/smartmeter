@@ -24,6 +24,11 @@ services:
     ports:
       - 9092:9092
       - 29092:29092
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -38,3 +43,17 @@ services:
     volumes:
       - ./init-topic.sh:/home/appuser/init-topic.sh
     command: ["sh", "-c", "kafka-server-start /etc/kafka/server.properties --override zookeeper.connect=zookeeper:2181 --override log.dirs=/var/lib/kafka/logs & /home/appuser/init-topic.sh && wait"]
+
+  locust:
+    build:
+      context: .
+      dockerfile: ./locust/Dockerfile
+    ports:
+      - "8089:8089"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./smart_meter_locustfile.py:/home/locust/locustfile.py
+      - ./requirements.txt:/home/locust/requirements.txt
+    command: ["-f", "/mnt/locust/smart_meter_locustfile.py", "--host", "http://kafka:9092"]
