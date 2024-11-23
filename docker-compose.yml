@@ -1,10 +1,34 @@
-version: '3'
+x-spark-common: &spark-common
+  image: bitnami/spark:3.5.0
+
+x-hive-common: &hive-common
+  build: 
+    context: .
+    dockerfile: ./src/infra/hive.Dockerfile
+  volumes:
+    - source:/warehouse
+    - target:/opt/hive/data/warehouse
+
+x-airflow-common: &airflow-common
+  build:
+      context: .
+      dockerfile: ./src/infra/airflow.Dockerfile
+  volumes:
+    - ./src/app/airflow/dags:/opt/airflow/dags
+    - ./src/logs/airflow:/opt/airflow/logs
+    - ./src/app/spark/:/opt/airflow/app/spark/
+
 services:
-  jupyter:
-    image: jupyter/base-notebook:python-3.11.6
+  locust:
+    build:
+      context: .
+      dockerfile: ./src/infra/locust.Dockerfile
     ports:
-      - "8888:8888"
-    command: ["start-notebook.sh", "--NotebookApp.token=''"]
+      - "8089:8089"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command: ["-f", "smart_meter_locustfile.py", "--host", "http://kafka:9092"]
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -41,19 +65,98 @@ services:
       KAFKA_DELETE_TOPIC_ENABLE: 'true' # Activer la suppression de topic 
       KAFKA_LOG_RETENTION_HOURS: 168 # Rétention des logs pendant 168 heures (7 jours)
     volumes:
-      - ./init-topic.sh:/home/appuser/init-topic.sh
+      - ./src/scripts/kafka-init-topic.sh:/home/appuser/init-topic.sh
     command: ["sh", "-c", "kafka-server-start /etc/kafka/server.properties --override zookeeper.connect=zookeeper:2181 --override log.dirs=/var/lib/kafka/logs & /home/appuser/init-topic.sh && wait"]
 
-  locust:
-    build:
-      context: .
-      dockerfile: ./locust/Dockerfile
+  spark-master:
+    <<: *spark-common
+    command: bin/spark-class org.apache.spark.deploy.master.Master
+    environment:
+      - SPARK_MODE=master
     ports:
-      - "8089:8089"
+      - "7077:7077"
+      - "8080:8080"
+
+  spark-worker:
+    <<: *spark-common
     depends_on:
-      kafka:
+      - spark-master
+    environment:
+      - SPARK_MODE=worker     
+      - SPARK_MASTER_URL=spark://spark-master:7077
+
+  postgres:
+    build: 
+      context: .
+      dockerfile: ./src/infra/postgres.Dockerfile
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    
+  airflow-scheduler:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && python /opt/airflow/scripts/init-airflow-spark-connection.py && airflow users create --username admin --firstname essai --lastname essai --role Admin --email air@gmail.com --password admin && airflow scheduler"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      postgres:
         condition: service_healthy
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "9095:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      airflow-scheduler:
+        condition: service_healthy
+    working_dir: /opt/airflow
+  
+  hive-metastore:
+    <<: *hive-common
+    container_name: hive-metastore
+    environment:
+      - SERVICE_NAME=metastore
+      - DB_DRIVER=postgres
+    ports:
+      - "9083:9083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  hive-server:
+    image: apache/hive:4.0.1
+    container_name: hive-server
+    environment:
+      - SERVICE_NAME=hiveserver2
+      - SERVICE_OPTS="-Dhive.metastore.uris=thrift://metastore:9083"
+      - IS_RESUME="true"
     volumes:
-      - ./smart_meter_locustfile.py:/home/locust/locustfile.py
-      - ./requirements.txt:/home/locust/requirements.txt
-    command: ["-f", "/mnt/locust/smart_meter_locustfile.py", "--host", "http://kafka:9092"]
+      - target:/opt/hive/data/warehouse
+    ports:
+      - "10000:10000"
+    depends_on:
+      - hive-metastore
+
+volumes:
+  target:
+  source:

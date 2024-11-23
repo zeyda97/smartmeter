@@ -1,6 +1,7 @@
 *.class
 *.log
 .venv
+logs
 
 # sbt specific
 .idea
@@ -68,3 +69,4 @@ dockerfile-app_telegraf/_docker_build.sh
 dockerfile-app_prometheus/_docker_build.sh
 dockerfile-app_prometheus/Dockerfile
 dockerfile-app_compose/properties/configuration-application.properties
+

@@ -1,0 +1,18 @@
+[project]
+name = "airflow"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Zack", email = ""},
+]
+dependencies = ["apache-airflow-providers-apache-spark>=4.9.0"]
+requires-python = "<3.12,>=3.9"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
