@@ -17,6 +17,8 @@ services:
       dockerfile: ./src/infra/locust.Dockerfile
     ports:
       - "8089:8089"
+    volumes:
+      - ./src/app/locust/:/mnt/locust/
     depends_on:
       kafka:
         condition: service_healthy
