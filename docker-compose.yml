@@ -1,22 +1,14 @@
-x-spark-common: &spark-common
-  image: bitnami/spark:3.5.0
-
-x-hive-common: &hive-common
-  build: 
-    context: .
-    dockerfile: ./src/infra/hive.Dockerfile
-  volumes:
-    - source:/warehouse
-    - target:/opt/hive/data/warehouse
-
 x-airflow-common: &airflow-common
   build:
       context: .
       dockerfile: ./src/infra/airflow.Dockerfile
+  env_file:
+    - ./src/infra/airflow.env
   volumes:
     - ./src/app/airflow/dags:/opt/airflow/dags
     - ./src/logs/airflow:/opt/airflow/logs
     - ./src/app/spark/:/opt/airflow/app/spark/
+
 
 services:
   locust:
@@ -56,21 +48,14 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_DELETE_TOPIC_ENABLE: 'true' # Activer la suppression de topic 
-      KAFKA_LOG_RETENTION_HOURS: 168 # Rétention des logs pendant 168 heures (7 jours)
+    env_file:
+      - ./src/infra/kafka.env
     volumes:
       - ./src/scripts/kafka-init-topic.sh:/home/appuser/init-topic.sh
     command: ["sh", "-c", "kafka-server-start /etc/kafka/server.properties --override zookeeper.connect=zookeeper:2181 --override log.dirs=/var/lib/kafka/logs & /home/appuser/init-topic.sh && wait"]
 
   spark-master:
-    <<: *spark-common
-    command: bin/spark-class org.apache.spark.deploy.master.Master
+    image: bitnami/spark:3.5.3
     environment:
       - SPARK_MODE=master
     ports:
@@ -78,23 +63,22 @@ services:
       - "8080:8080"
 
   spark-worker:
-    <<: *spark-common
+    image: bitnami/spark:3.5.3
     depends_on:
       - spark-master
     environment:
       - SPARK_MODE=worker     
       - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=9
 
   postgres:
-    build: 
-      context: .
-      dockerfile: ./src/infra/postgres.Dockerfile
+    image: postgres:14
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
       POSTGRES_DB: airflow
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
+      test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
       retries: 5
       start_period: 5s
@@ -110,15 +94,20 @@ services:
       retries: 5
       start_period: 30s
     restart: always
+    environment:
+      - PYTHONPATH=/opt/airflow
     depends_on:
       postgres:
         condition: service_healthy
+    working_dir: /opt/airflow
 
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
       - "9095:8080"
+    environment:
+      - PYTHONPATH=/opt/airflow
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -130,33 +119,63 @@ services:
       airflow-scheduler:
         condition: service_healthy
     working_dir: /opt/airflow
-  
-  hive-metastore:
-    <<: *hive-common
-    container_name: hive-metastore
-    environment:
-      - SERVICE_NAME=metastore
-      - DB_DRIVER=postgres
-    ports:
-      - "9083:9083"
-    depends_on:
-      postgres:
-        condition: service_healthy
 
-  hive-server:
-    image: apache/hive:4.0.1
-    container_name: hive-server
-    environment:
-      - SERVICE_NAME=hiveserver2
-      - SERVICE_OPTS="-Dhive.metastore.uris=thrift://metastore:9083"
-      - IS_RESUME="true"
-    volumes:
-      - target:/opt/hive/data/warehouse
+  namenode:
+    image: arminzolfagharid/hadoop-namenode:v2-hadoop3.2.1
+    container_name: namenode
     ports:
-      - "10000:10000"
-    depends_on:
-      - hive-metastore
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+    restart: always
+    env_file:
+      - ./src/infra/hadoop.env
+    environment:
+      - CLUSTER_NAME=test
+    
+  datanode:
+    image: arminzolfagharid/hadoop-datanode:v2-hadoop3.2.1
+    container_name: datanode
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    restart: always
+    env_file:
+      - ./src/infra/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+      CLUSTER_NAME: test
+    
+  resourcemanager:
+    image: arminzolfagharid/hadoop-resourcemanager:v2-hadoop3.2.1
+    container_name: resourcemanager
+    restart: always
+    env_file:
+      - ./src/infra/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+    
+  nodemanager1:
+    image: arminzolfagharid/hadoop-nodemanager:v2-hadoop3.2.1
+    container_name: nodemanager
+    restart: always
+    env_file:
+      - ./src/infra/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+  
+  historyserver:
+    image: arminzolfagharid/hadoop-historyserver:v2-hadoop3.2.1
+    container_name: historyserver
+    restart: always
+    env_file:
+      - ./src/infra/hadoop.env
+    environment:
+      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
 
 volumes:
-  target:
-  source:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_historyserver:

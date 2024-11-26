@@ -20,6 +20,7 @@ class TransformationBase:
                 SparkSession.builder
                 .appName(self.PROCESS_NAME)
                 .master("spark://spark-master:7077")
+                .enableHiveSupport()
                 .getOrCreate()
             )
         self.reader = Reader(self.spark)

@@ -4,8 +4,6 @@ from app.spark.common import TransformationBase
 class Transformation(TransformationBase):
     PROCESS_NAME = "SparkApp2-DeltaProcessor"
 
-    
-
     def read(self):
         self.source_df = self.reader.read_stream_from_kafka()
 

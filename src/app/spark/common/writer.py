@@ -21,10 +21,9 @@ class Writer:
     def write_stream_to_delta(self, df):
         return (
             df.writeStream
-            .format("delta")
-            .option("path", self.delta_config.hdfs_output)
-            .option("checkpointLocation", self.delta_config.checkpoint_location)
-            .outputMode("complete")
+            .option("checkpointLocation", "/tmp")
+            .option("path", "hdfs://namenode:9000/user/hive/warehouse/ddd")
+            .outputMode("append")
             .trigger(processingTime="1 minute")
             .start()
             .awaitTermination()

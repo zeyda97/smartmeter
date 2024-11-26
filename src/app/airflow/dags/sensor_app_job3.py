@@ -7,12 +7,12 @@ default_args = {
     'start_date': datetime(2023, 1, 1),
 }
 
-dag = DAG('sensor_app_job2', default_args=default_args, schedule_interval=None)
+dag = DAG('sensor_app_job3', default_args=default_args, schedule_interval=None)
 
 # Tâche pour exécuter le job Spark 
 spark_submit = SparkSubmitOperator(
     task_id='spark_submit_task',
-    application='/opt/airflow/app/spark/jobs/spark_app2.py',
+    application='/opt/airflow/app/spark/jobs/spark_app3.py',
     conf={
         'spark.master': 'spark://spark-master:7077',
         'spark.jars.ivy': '/opt/airflow',
