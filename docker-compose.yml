@@ -60,18 +60,38 @@ services:
     image: bitnami/spark:3.5.3
     environment:
       - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - HDFS_NAMENODE_HOST=namenode
+      - MLFLOW_TRACKING_URI=http://mlflow:5001
+    depends_on:
+      - namenode
+      - datanode
+      - mlflow
     ports:
       - "7077:7077"
       - "8080:8080"
+    volumes:
+      - ./src/app/spark:/opt/spark/work-dir
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   spark-worker:
     image: bitnami/spark:3.5.3
     depends_on:
       - spark-master
+      - namenode
+      - datanode
+      - mlflow
     environment:
-      - SPARK_MODE=worker     
+      - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_CORES=9
+      - HDFS_NAMENODE_HOST=namenode
+      - MLFLOW_TRACKING_URI=http://mlflow:5001
+    volumes:
+      - ./src/app/spark:/opt/spark/work-dir
 
   postgres:
     image: postgres:14
@@ -101,6 +121,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      #spark-master:
+        #condition: service_healthy
+      #namenode:
+        #condition: service_healthy
     working_dir: /opt/airflow
 
   airflow-webserver:
@@ -120,6 +144,10 @@ services:
     depends_on:
       airflow-scheduler:
         condition: service_healthy
+      #spark-master:
+        #condition: service_healthy
+      #namenode:
+        #condition: service_healthy
     working_dir: /opt/airflow
 
   namenode:
@@ -176,6 +204,22 @@ services:
       SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
     volumes:
       - hadoop_historyserver:/hadoop/yarn/timeline
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: mlflow
+    ports:
+      - "5001:5000"
+    environment:
+      - BACKEND_STORE_URI=sqlite:///mlflow.db
+      - ARTIFACT_ROOT=/mlflow/artifacts
+    volumes:
+      - ./mlflow:/mlflow
+    command: >
+      mlflow server
+      --backend-store-uri sqlite:///mlflow.db
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
 
 volumes:
   hadoop_namenode:
