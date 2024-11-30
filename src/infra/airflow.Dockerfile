@@ -6,11 +6,11 @@ USER root
 ENV SPARK_VERSION=3.5.3
 ENV HADOOP_VERSION=3
 ENV SPARK_HOME=/opt/spark
-ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-arm64
+ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV SPARK_JARS_IVY=/opt/ivy2
 
 
-RUN mkdir -p /opt/ivy2 
+RUN mkdir -p /opt/ivy2
 RUN mkdir -p /opt/airflow/scripts/
 
 
@@ -22,11 +22,11 @@ RUN apt-get update && \
     ripgrep  gcc python3-dev wget && \
     wget -qO- https://archive.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz | tar -xz -C /opt/ && \
     mv /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} $SPARK_HOME && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean
+   # && rm -rf /var/lib/apt/lists/*
 
 
-RUN chmod 777 /opt/ivy2/ 
+RUN chmod 777 /opt/ivy2/
 RUN chmod 777 /opt/airflow/scripts/
 
 ENV PATH=$JAVA_HOME/bin:$SPARK_HOME/bin:$PATH
