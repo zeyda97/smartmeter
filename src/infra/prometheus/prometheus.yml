@@ -3,5 +3,6 @@ scrape_configs:
     static_configs:
       - targets: ['prometheus-locust-exporter:9646']
 
-
-
+  - job_name: 'spark_app5'
+    static_configs:
+      - targets: ['spark-app5:8000']  # Replace 'spark-app5' with the actual container or service name
