@@ -3,10 +3,19 @@ from datetime import datetime, timezone
 from locust import HttpUser, TaskSet, task, between
 from confluent_kafka import Producer
 import json
+
+
+from prometheus_client import start_http_server, Gauge
+
 from interpolatedProfile import InterpolatedProfileByUsagePoint
-from temperatureProvider import TemperatureProvider
 from timeProvider import TimeProvider
 from valueProvider import ConsumerInterpolatedVoltageProvider
+
+# Initialisation des métriques Prometheus
+cpu_usage_metric = Gauge('locust_cpu_usage', 'Simulated CPU usage data')
+voltage_metric = Gauge('locust_voltage_data', 'Simulated voltage data')
+
+start_http_server(8000)  # Démarrage du serveur Prometheus
 
 class SmartMeterBehavior(TaskSet):
     def on_start(self):
@@ -61,6 +70,11 @@ class SmartMeterBehavior(TaskSet):
             self.producer.produce('voltage_data', value=json.dumps(data).encode('utf-8'))
             print(f"Voltage data sent: {payload}")
 
+        # Simule la génération de tension
+        voltage = random.uniform(0, 600)  # Génère une tension simulée
+        voltage_metric.set(voltage)  # Mise à jour de la métrique Prometheus
+        print(f"Voltage simulated: {voltage}")
+
     @task(1)
     def get_forecast(self):
         """Simule la récupération de prévisions et envoie à Kafka."""
@@ -71,6 +85,13 @@ class SmartMeterBehavior(TaskSet):
             self.producer.produce('forecast_data', value=json.dumps(data).encode('utf-8'))
             # Envoie les données de prévisions au topic Kafka "forecast_data"
             print(f"Forecast data sent: {payload}")
+
+    @task(4)
+    def simulate_cpu_usage(self):
+        """Simule et enregistre l'utilisation du CPU."""
+        cpu_usage = random.uniform(10, 90)
+        cpu_usage_metric.set(cpu_usage)
+        print(f"CPU usage simulated: {cpu_usage}")
 
 class KafkaUser(HttpUser):
     tasks = [SmartMeterBehavior]
