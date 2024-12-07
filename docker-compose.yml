@@ -51,7 +51,7 @@ services:
       test: ["CMD", "nc", "-z", "localhost", "9092"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -229,6 +229,14 @@ services:
       --backend-store-uri sqlite:///mlflow.db
       --default-artifact-root /mlflow/artifacts
       --host 0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "0.5"
+        reservations:
+          memory: 1G
+          cpus: "0.25"
 
   prometheus:
     image: prom/prometheus:latest
