@@ -1,8 +1,11 @@
+global:
+  scrape_interval: 30s  # Intervalle global pour tous les jobs
+
 scrape_configs:
   - job_name: 'locust'
     static_configs:
-      - targets: ['prometheus-locust-exporter:9646']
+      - targets: [ 'locust:8000' ]
 
   - job_name: 'spark_app5'
     static_configs:
-      - targets: ['spark-app5:8000']  # Replace 'spark-app5' with the actual container or service name
+      - targets: ['spark-app5:8001']  # Replace 'spark-app5' with the actual container or service name

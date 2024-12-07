@@ -17,6 +17,7 @@ services:
       dockerfile: ./src/infra/locust.Dockerfile
     ports:
       - "8089:8089"
+      - "8000:8000"  # Exportation des métriques Prometheus
     volumes:
       - ./src/app/locust/:/mnt/locust/
     depends_on:
@@ -237,20 +238,6 @@ services:
           memory: 1G
           cpus: "0.25"
 
-  prometheus-locust-exporter:
-      image: containersol/locust_exporter:latest
-      container_name: prometheus-locust-exporter
-      ports:
-        - "9646:9646" # Port pour exporter les métriques
-      command:
-        - "--locust.uri=http://locust:8089"  # Assure-toi d'utiliser le bon flag pour définir l'URL de Locust
-      depends_on:
-        - locust
-      networks:
-        - monitoring
-
-
-
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -277,6 +264,7 @@ services:
          - GF_SECURITY_ADMIN_USER=admin
         networks:
           - monitoring
+
 
 volumes:
   hadoop_namenode:
