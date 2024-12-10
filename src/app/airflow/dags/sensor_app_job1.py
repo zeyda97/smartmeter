@@ -14,7 +14,7 @@ spark_submit = SparkSubmitOperator(
     task_id='spark_submit_task',
     application='/opt/airflow/app/spark/jobs/spark_app1.py',
     conf={
-        'spark.master': 'spark://spark-master:7077',
+        'spark.master': 'spark://spark-master',
         'spark.jars.ivy': '/opt/airflow',
         'spark.sql.extensions': 'io.delta.sql.DeltaSparkSessionExtension',
         'spark.sql.catalog.spark_catalog': 'org.apache.spark.sql.delta.catalog.DeltaCatalog',
@@ -25,6 +25,8 @@ spark_submit = SparkSubmitOperator(
         'spark.executor.cores': '1',
         'spark.executor.memory': '500m',
         'spark.dynamicAllocation.enabled': 'true',
+        'spark.metrics.namespace': 'spark_app1',
+        'spark.metrics.conf': '/opt/spark/conf/metrics.properties'
 
     },
     conn_id='spark_default',

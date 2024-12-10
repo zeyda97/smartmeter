@@ -8,6 +8,7 @@ ENV HADOOP_VERSION=3
 ENV SPARK_HOME=/opt/spark
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
 ENV SPARK_JARS_IVY=/opt/ivy2
+ENV SPARK_CONF_DIR=/opt/spark/conf
 
 
 RUN mkdir -p /opt/ivy2
@@ -40,4 +41,4 @@ COPY ./pyproject.toml /opt/airflow/
 USER airflow
 
 # Install Python dependencies using pdm
-RUN pip install apache-airflow-providers-apache-spark
+RUN pip install apache-airflow-providers-apache-spark mlflow confluent_kafka
