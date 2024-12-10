@@ -6,7 +6,8 @@ from airflow.utils.db import provide_session
 def create_connection(session=None):
     conn_id = 'spark_default'
     conn_type = 'spark'
-    host = 'spark://spark-master:7077'
+    host = 'spark://spark-master'
+    port = 7077
     extra = '{"queue": "default"}'
 
     # Check if the connection already exists
@@ -20,6 +21,7 @@ def create_connection(session=None):
         conn_id=conn_id,
         conn_type=conn_type,
         host=host,
+        port=port,
         extra=extra
     )
 

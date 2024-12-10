@@ -8,6 +8,7 @@ x-airflow-common: &airflow-common
     - ./src/app/airflow/dags:/opt/airflow/dags
     - ./src/logs/airflow:/opt/airflow/logs
     - ./src/app/spark/:/opt/airflow/app/spark/
+    - ./src/infra/metrics.properties:/opt/spark/conf/metrics.properties
 
 
 services:
@@ -68,6 +69,7 @@ services:
     environment:
       - SPARK_MODE=master
       - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_URL=spark://spark-master:7077
       - HDFS_NAMENODE_HOST=namenode
       - MLFLOW_TRACKING_URI=http://mlflow:5001
     depends_on:
@@ -79,13 +81,18 @@ services:
       - "8080:8080"
     volumes:
       - ./src/app/spark:/opt/spark/work-dir
+      - ./src/infra/metrics.properties:/opt/spark/conf/metrics.properties
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080"]
       interval: 30s
       timeout: 10s
       retries: 5
     networks:
-      - monitoring
+      monitoring:
+        aliases:
+          - spark-master
+          - namenode
+
 
   spark-worker:
     image: bitnami/spark:3.5.3
@@ -101,6 +108,9 @@ services:
       - MLFLOW_TRACKING_URI=http://mlflow:5001
     volumes:
       - ./src/app/spark:/opt/spark/work-dir
+      - ./src/infra/metrics.properties:/opt/spark/conf/metrics.properties
+    networks:
+      - monitoring
 
   postgres:
     image: postgres:14
@@ -114,12 +124,14 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+    networks:
+      - monitoring
     
   airflow-scheduler:
     <<: *airflow-common
     command: bash -c "airflow db migrate && python /opt/airflow/scripts/init-airflow-spark-connection.py && airflow users create --username admin --firstname essai --lastname essai --role Admin --email air@gmail.com --password admin && airflow scheduler"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      test: [ "CMD", "pgrep", "-f", "airflow" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -135,6 +147,8 @@ services:
       #namenode:
         #condition: service_healthy
     working_dir: /opt/airflow
+    networks:
+      - monitoring
 
   airflow-webserver:
     <<: *airflow-common
@@ -158,13 +172,15 @@ services:
       #namenode:
         #condition: service_healthy
     working_dir: /opt/airflow
+    networks:
+      - monitoring
 
   namenode:
     image: arminzolfagharid/hadoop-namenode:v2-hadoop3.2.1
     container_name: namenode
     ports:
-      - 9870:9870
-      - 9000:9000
+      - "9870:9870"
+      - "9000:9000"
     volumes:
       - hadoop_namenode:/hadoop/dfs/name
     restart: always
@@ -172,6 +188,10 @@ services:
       - ./src/infra/hadoop.env
     environment:
       - CLUSTER_NAME=test
+    networks:
+      monitoring:
+        aliases:
+          - namenode
     
   datanode:
     image: arminzolfagharid/hadoop-datanode:v2-hadoop3.2.1
@@ -264,6 +284,16 @@ services:
          - GF_SECURITY_ADMIN_USER=admin
         networks:
           - monitoring
+
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    ports:
+      - "9091:9091"  # Port d'exposition du Pushgateway
+    restart: always
+    networks:
+      - monitoring
+
 
 
 volumes:

@@ -10,8 +10,8 @@ cpu_usage_metric = Gauge("spark_app5_cpu_usage", "CPU usage of Spark App5")  # P
 
 def expose_metrics():
     # Start the Prometheus metrics HTTP server
-    start_http_server(8001)  # Prometheus will scrape metrics from this port
-    print("Prometheus metrics server started on port 8000")
+    start_http_server(8005)  # Prometheus will scrape metrics from this port
+    print("Prometheus metrics server started on port 8005")
 
 def main():
     # Start exposing Prometheus metrics

@@ -4,8 +4,20 @@ global:
 scrape_configs:
   - job_name: 'locust'
     static_configs:
-      - targets: [ 'locust:8000' ]
+      - targets: ['locust:8000']
+
+  - job_name: 'spark_master'
+    static_configs:
+      - targets: ['spark-master:8080']  # Expose metrics from Spark master
+
+  - job_name: 'spark_worker'
+    static_configs:
+      - targets: ['spark-worker:8081']  # Expose metrics from Spark worker
+
+  - job_name: 'spark_app1'
+    static_configs:
+      - targets: ['localhost:8001']  # Replace with the actual metrics endpoint of spark_app1
 
   - job_name: 'spark_app5'
     static_configs:
-      - targets: ['spark-app5:8001']  # Replace 'spark-app5' with the actual container or service name
+      - targets: ['localhost:8005']  # Replace with the actual metrics endpoint of spark_app5
