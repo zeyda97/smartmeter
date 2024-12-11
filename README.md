@@ -46,7 +46,8 @@ Airflow est utilisé pour orchestrer les pipelines de traitement et prédiction.
   - Poussée des métriques vers Prometheus.
 
 Accès à l’interface web d’Airflow : http://localhost:9095
-![img.png](img.png)
+
+![airflow.jpg](images%2Fairflow.jpg)
 
 ### Surveillance des métriques
 La surveillance est assurée par Prometheus et Grafana, permettant une vision en temps réel des performances du système.
